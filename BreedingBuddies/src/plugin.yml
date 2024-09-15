@@ -1,0 +1,11 @@
+main: me.Plugins.BreedingBuddies.BreedingBuddies
+api-version: 1.20
+name: BreedingBuddies
+version: 1.0
+author: Nowko
+depend: [MMOItems, MythicLib]
+commands:
+  breedingbuddies:
+    description: Reloads plugin configurations or checks if the current chunk is a stable chunk.
+    usage: /<command>
+    permission: breedingbuddies.use
