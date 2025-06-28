@@ -63,6 +63,14 @@ public class FarmAnimal {
         calcGeneticsIfIsMount(entity, geneticPoints);
         this.state = AnimalStates.UNOWNED;
     }
+
+    public FarmAnimal(UUID uuid, Entity entity) {
+        this.uuid = uuid;
+        this.name = "???";
+        this.entity = entity;
+        calcGeneticsIfIsMount(entity, geneticPoints);
+        this.state = AnimalStates.UNOWNED;
+    }
     
     public FarmAnimal (UUID animalUUID, String name, List<UUID> owners, Entity entity) {
     	this.uuid = animalUUID;

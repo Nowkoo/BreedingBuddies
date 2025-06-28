@@ -5,8 +5,9 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 public class MountStats {
     public final double minHealth, maxHealth, minSpeed, maxSpeed, minJump, maxJump;
-    public static final double defMinHealth = 15, defMaxHealth = 30, defMinSpeed = 0.1125, defMaxSpeed = 0.23, defMinJump =0.4, defMaxJump = 0.6;
-    private static FileConfiguration bundlesConfig;
+    public static final double defMinHealth = 15, defMaxHealth = 30;
+    public static final double defMinSpeed = 0.1125, defMaxSpeed = 0.23;
+    public static final double defMinJump = 0.4, defMaxJump = 0.6;    private static FileConfiguration bundlesConfig;
     private static FileConfiguration numbersConfig;
 
     public MountStats(double minHealth, double maxHealth,
@@ -21,39 +22,35 @@ public class MountStats {
     }
 
     public static MountStats getMountStats(String animalKey) {
-        System.out.println("[DEBUG] bundlesConfig secciones disponibles: " + bundlesConfig.getKeys(true));
-        System.out.println("[DEBUG] Buscando sección: " + animalKey + ".mountStats");
-        System.out.println("[DEBUG] Existe? " + bundlesConfig.contains(animalKey + ".mountStats"));
+        // Buscar el nombre real ignorando mayúsculas
+        String realKey = bundlesConfig.getKeys(false).stream()
+                .filter(key -> key.equalsIgnoreCase(animalKey))
+                .findFirst()
+                .orElse(null);
 
-        ConfigurationSection section = bundlesConfig.getConfigurationSection(animalKey + ".mountStats");
-        if (section == null) {
-            return getDefaultMountStats();
-        }
+        // Buscar la sección de stats personalizada (si existe)
+        ConfigurationSection mountSection = (realKey != null)
+                ? bundlesConfig.getConfigurationSection(realKey + ".mountStats")
+                : null;
 
+        // Sección de valores por defecto (si existe)
+        ConfigurationSection defaults = numbersConfig.getConfigurationSection("defaultMountStats");
+
+        // Cargar los valores desde mountSection > defaults > hardcoded
         return new MountStats(
-                section.getDouble("minHealth", numbersConfig.getDouble("defaultMinMountHealth", defMinHealth)),
-                section.getDouble("maxHealth", numbersConfig.getDouble("defaultMaxMountHealth", defMaxHealth)),
-                section.getDouble("minSpeed", numbersConfig.getDouble("defaultMinMountSpeed", defMinSpeed)),
-                section.getDouble("maxSpeed", numbersConfig.getDouble("defaultMaxMountSpeed", defMaxSpeed)),
-                section.getDouble("minJump", numbersConfig.getDouble("defaultMinMountJump", defMinJump)),
-                section.getDouble("maxJump", numbersConfig.getDouble("defaultMaxMountJump", defMaxJump))
+                getStat("minHealth", mountSection, defaults, defMinHealth),
+                getStat("maxHealth", mountSection, defaults, defMaxHealth),
+                getStat("minSpeed",  mountSection, defaults, defMinSpeed),
+                getStat("maxSpeed",  mountSection, defaults, defMaxSpeed),
+                getStat("minJump",   mountSection, defaults, defMinJump),
+                getStat("maxJump",   mountSection, defaults, defMaxJump)
         );
     }
 
-    public static MountStats getDefaultMountStats() {
-        ConfigurationSection section = numbersConfig.getConfigurationSection("defaultMountStats");
-        if (section == null) return new MountStats(
-                defMinHealth, defMaxHealth, defMinSpeed, defMaxSpeed, defMinJump, defMaxJump
-        );
-
-        return new MountStats(
-                section.getDouble("defaultMinMountHealth", defMinHealth),
-                section.getDouble("defaultMaxMountHealth", defMaxHealth),
-                section.getDouble("defaultMinMountSpeed", defMinSpeed),
-                section.getDouble("defaultMaxMountSpeed", defMaxSpeed),
-                section.getDouble("defaultMinMountJump", defMinJump),
-                section.getDouble("defaultMaxMountJump", defMaxJump)
-        );
+    private static double getStat(String key, ConfigurationSection primary, ConfigurationSection fallback, double hardcodedDefault) {
+        if (primary != null && primary.contains(key)) return primary.getDouble(key);
+        if (fallback != null && fallback.contains(key)) return fallback.getDouble(key);
+        return hardcodedDefault;
     }
 
     public static void setConfigs(FileConfiguration bundles, FileConfiguration numbers) {

@@ -48,7 +48,8 @@ public class BreedingListener implements Listener {
 						);
 						((AbstractHorse) childEntity).setTamed(true);
 					}, 1L);
-					FarmAnimal child = new FarmAnimal(childEntity.getUniqueId(), MountUtils.getGenetics(childEntity), childEntity);
+
+					FarmAnimal child = new FarmAnimal(childEntity.getUniqueId(), childEntity);
 					//UnownedAnimalsManager.addUnownedAnimal(child);
 				} else
 					specialBreed(mother, father, childEntity);

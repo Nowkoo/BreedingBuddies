@@ -150,8 +150,8 @@ public class MountUtils {
     }
 
     public static void applyInheritedStats(LivingEntity child, LivingEntity parent1, LivingEntity parent2) {
+        //1
         MountStats mountStats = MountStats.getMountStats(child.getName());
-
         double minHealth = mountStats.getMinHealth();
         double maxHealth = mountStats.getMaxHealth();
 

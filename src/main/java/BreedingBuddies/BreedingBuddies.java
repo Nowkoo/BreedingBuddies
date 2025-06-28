@@ -8,25 +8,25 @@ import BreedingBuddies.Listeners.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
+import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.AbstractHorse;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
-public class BreedingBuddies extends JavaPlugin {private FileConfiguration bundlesConfig = null;
+public class BreedingBuddies extends JavaPlugin implements TabCompleter {
+    private FileConfiguration bundlesConfig = null;
     private static BreedingBuddies instance;
     private File bundlesFile = null;
     private FileConfiguration itemsConfig = null;
@@ -35,6 +35,7 @@ public class BreedingBuddies extends JavaPlugin {private FileConfiguration bundl
     private File messagesFile = null;
     private FileConfiguration numbersConfig = null;
     private File numbersFile = null;
+    private final Map<String, SubCommand> subCommands = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -42,7 +43,9 @@ public class BreedingBuddies extends JavaPlugin {private FileConfiguration bundl
         createAndLoadConfigs();
         registerListeners();
         new DayChangeScheduler(this, Numbers.startingDayTime).startScheduler();
-        this.getCommand("breedingbuddies").setExecutor(this);
+        //this.getCommand("breedingbuddies").setExecutor(this);
+        InitSubcommands();
+        getCommand("breedingbuddies").setTabCompleter(this);
         startAutoSaveTask();
         instance = this;
     }
@@ -68,115 +71,151 @@ public class BreedingBuddies extends JavaPlugin {private FileConfiguration bundl
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("breedingbuddies")) {
-            if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-                createAndLoadConfigs();
-                sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Config reloaded successfully!");
-                return true;
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("stablechunk")) {
-                if (sender instanceof Player) {
-                    Player player = (Player) sender;
-                    Chunk chunk = player.getLocation().getChunk();
-                    boolean isStable = ChunkManager.isStableChunk(chunk);
-                    sender.sendMessage(ChatColor.GREEN + "Stable chunk: " + isStable);
-                    return true;
-                }
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("changeday")) {
-                Bukkit.getServer().getPluginManager().callEvent(new DayChangeEvent());
-                sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Day changed!");
-                return true;
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("spawnanimal")) {
-                if (args.length == 4 && sender instanceof Player) {
-                    String entityType = args[1].toUpperCase();
-                    int friendship = Integer.parseInt(args[2]);
-                    int genetics = Integer.parseInt(args[3]);
+        if (!command.getName().equalsIgnoreCase("breedingbuddies")) return false;
+        if (args.length == 0) return false;
 
-                    if (!bundlesConfig.contains(entityType)) {
-                        sender.sendMessage(ChatColor.RED + "Invalid entity type specified in config.");
-                        return false;
-                    }
+        SubCommand subCommand = subCommands.get(args[0].toLowerCase());
+        if (subCommand == null) {
+            sender.sendMessage(ChatColor.RED + "Unknown subcommand. Use /breedingbuddies <reload|spawnanimal|...>");
+            return false;
+        }
 
-                    Player player = (Player) sender;
-                    EntityType type = EntityType.valueOf(entityType);
-                    Entity entity = player.getWorld().spawnEntity(player.getLocation(), type);
-                    UUID entityUuid = entity.getUniqueId();
-                    
-                    FarmAnimal farmAnimal = new FarmAnimal(entityUuid, entityType, player.getUniqueId(), entity, genetics, friendship);
-                    farmAnimal.setState(AnimalStates.SPAWNED);
-                    UnownedAnimalsManager.addUnownedAnimal(farmAnimal);
-                    sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Animal spawned successfully!");
-                    return true;
-                } else {
-                    sender.sendMessage(ChatColor.RED + "Usage: /breedingbuddies spawnanimal <entityType> <friendship> <genetics>");
-                    return false;
-                } 
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("spawnmount")) {
-                if (args.length == 6 && sender instanceof Player) {
-                    String entityType = args[1].toUpperCase();
-                    int friendship = Integer.parseInt(args[2]);
-                    double health = Integer.parseInt(args[3]);
-                    double speed = Double.parseDouble(args[4]);
-                    double jump = Double.parseDouble(args[5]);
+        return subCommand.execute(sender, args);
+    }
 
-                    EntityType type;
-                    try {
-                        type = EntityType.valueOf(entityType);
-                    } catch (IllegalArgumentException e) {
-                        sender.sendMessage(ChatColor.RED + "Invalid entity type.");
-                        return false;
-                    }
+    private boolean handleReload(CommandSender sender, String[] args) {
+        createAndLoadConfigs();
+        sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Config reloaded successfully!");
+        return true;
+    }
 
-                    if (!AbstractHorse.class.isAssignableFrom(type.getEntityClass())) {
-                        sender.sendMessage(ChatColor.RED + "Entity type must be a mount (like HORSE, DONKEY, etc).");
-                        return false;
-                    }
-
-                    Player player = (Player) sender;
-                    Entity entity = player.getWorld().spawnEntity(player.getLocation(), type);
-
-                    if (!(entity instanceof AbstractHorse horse)) {
-                        sender.sendMessage(ChatColor.RED + "Spawned entity is not a mount.");
-                        return false;
-                    }
-
-                    UUID entityUuid = entity.getUniqueId();
-                    FarmAnimal farmAnimal = new FarmAnimal(entityUuid, entityType, player.getUniqueId(), entity, 0, friendship);
-                    farmAnimal.setState(AnimalStates.SPAWNED);
-                    farmAnimal.setFriendshipPoints(friendship);
-                    UnownedAnimalsManager.addUnownedAnimal(farmAnimal);
-
-                    // Aplica stats
-                    horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(health);
-                    horse.setHealth(health);
-                    horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(speed);
-                    horse.setJumpStrength(jump);
-                    horse.addScoreboardTag("bb.isNerfed");
-
-                    sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Animal spawned successfully!");
-                    return true;
-
-                } else {
-                    sender.sendMessage(ChatColor.RED + "Usage: /breedingbuddies spawnmount <entityType> <friendship> <health> <speed> <jump>");
-                    return false;
-                }
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("savedata")) {
-            	PluginData.saveAllData();
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("loaddata")) {
-            	PluginData.loadAllData();
-            } else if (args.length > 0 && args[0].equalsIgnoreCase("fix")) {
-
-                // Recorrer todos los animales cargados
-                for (List<FarmAnimal> animals : PluginData.getPlayerAnimals().values()) {
-                    for (FarmAnimal animal : animals) {
-                        animal.setCared(false);
-                        animal.setFed(false);
-                        animal.setState(AnimalStates.HAPPY);
-                    }
-                }
-                return true;
-            }
+    private boolean handleStableChunk(CommandSender sender, String[] args) {
+        if (sender instanceof Player player) {
+            Chunk chunk = player.getLocation().getChunk();
+            boolean isStable = ChunkManager.isStableChunk(chunk);
+            sender.sendMessage(ChatColor.GREEN + "Stable chunk: " + isStable);
+            return true;
         }
         return false;
+    }
+
+    private boolean handleChangeDay(CommandSender sender, String[] args) {
+        Bukkit.getServer().getPluginManager().callEvent(new DayChangeEvent());
+        sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Day changed!");
+        return true;
+    }
+
+    private boolean handleSpawnAnimal(CommandSender sender, String[] args) {
+        if (args.length == 4 && sender instanceof Player player) {
+            String entityType = args[1].toUpperCase();
+            int friendship = Integer.parseInt(args[2]);
+            int genetics = Integer.parseInt(args[3]);
+
+            if (!bundlesConfig.contains(entityType)) {
+                sender.sendMessage(ChatColor.RED + "Invalid entity type specified in config.");
+                return false;
+            }
+
+            EntityType type = EntityType.valueOf(entityType);
+            Entity entity = player.getWorld().spawnEntity(player.getLocation(), type);
+            UUID entityUuid = entity.getUniqueId();
+
+            FarmAnimal farmAnimal = new FarmAnimal(entityUuid, entityType, player.getUniqueId(), entity, genetics, friendship);
+            farmAnimal.setState(AnimalStates.SPAWNED);
+            UnownedAnimalsManager.addUnownedAnimal(farmAnimal);
+
+            sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Animal spawned successfully!");
+            return true;
+        }
+        sender.sendMessage(ChatColor.RED + "Usage: /breedingbuddies spawnanimal <entityType> <friendship> <genetics>");
+        return false;
+    }
+
+    private void InitSubcommands(){
+        subCommands.put("reload", this::handleReload);
+        subCommands.put("stablechunk", this::handleStableChunk);
+        subCommands.put("changeday", this::handleChangeDay);
+        subCommands.put("spawnanimal", this::handleSpawnAnimal);
+        subCommands.put("spawnmount", this::handleSpawnMount);
+        subCommands.put("savedata", this::handleSaveData);
+        subCommands.put("loaddata", this::handleLoadData);
+        subCommands.put("fix", this::handleFix);
+    }
+    private boolean handleSpawnMount(CommandSender sender, String[] args) {
+        if (args.length == 6 && sender instanceof Player player) {
+            String entityType = args[1].toUpperCase();
+            int friendship = Integer.parseInt(args[2]);
+            double health = Integer.parseInt(args[3]);
+            double speed = Double.parseDouble(args[4]);
+            double jump = Double.parseDouble(args[5]);
+
+            EntityType type;
+            try {
+                type = EntityType.valueOf(entityType);
+            } catch (IllegalArgumentException e) {
+                sender.sendMessage(ChatColor.RED + "Invalid entity type.");
+                return false;
+            }
+
+            if (!AbstractHorse.class.isAssignableFrom(type.getEntityClass())) {
+                sender.sendMessage(ChatColor.RED + "Entity type must be a mount (like HORSE, DONKEY, etc).");
+                return false;
+            }
+
+            Entity entity = player.getWorld().spawnEntity(player.getLocation(), type);
+
+            if (!(entity instanceof AbstractHorse horse)) {
+                sender.sendMessage(ChatColor.RED + "Spawned entity is not a mount.");
+                return false;
+            }
+
+            UUID entityUuid = entity.getUniqueId();
+            FarmAnimal farmAnimal = new FarmAnimal(entityUuid, entityType, player.getUniqueId(), entity, 0, friendship);
+            farmAnimal.setState(AnimalStates.SPAWNED);
+            farmAnimal.setFriendshipPoints(friendship);
+            UnownedAnimalsManager.addUnownedAnimal(farmAnimal);
+
+            horse.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(health);
+            horse.setHealth(health);
+            horse.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(speed);
+            horse.setJumpStrength(jump);
+
+            NamespacedKey key = new NamespacedKey(BreedingBuddies.getInstance(), "is_nerfed");
+            entity.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) (true ? 1 : 0));
+
+            sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Animal spawned successfully!");
+            return true;
+        }
+        sender.sendMessage(ChatColor.RED + "Usage: /breedingbuddies spawnmount <entityType> <friendship> <health> <speed> <jump>");
+        return false;
+    }
+
+    private boolean handleSaveData(CommandSender sender, String[] args) {
+        PluginData.saveAllData();
+        sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies] Data saved.");
+        return true;
+    }
+
+    private boolean handleLoadData(CommandSender sender, String[] args) {
+        PluginData.loadAllData();
+        sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies] Data loaded.");
+        return true;
+    }
+
+    private boolean handleFix(CommandSender sender, String[] args) {
+        for (List<FarmAnimal> animals : PluginData.getPlayerAnimals().values()) {
+            for (FarmAnimal animal : animals) {
+                animal.setCared(false);
+                animal.setFed(false);
+                animal.setState(AnimalStates.HAPPY);
+            }
+        }
+        sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies] Animals fixed.");
+        return true;
+    }
+
+    private interface SubCommand {
+        boolean execute(CommandSender sender, String[] args);
     }
 
     private void createAndLoadConfigs() {
@@ -462,5 +501,58 @@ defaultMountStats:
 nerfMountStats: false             # Whether to nerf mount stats automatically.
 mountNerfDivisor: 2.0             # Applied if nerfMountStats is true; divides the stats.
 """;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!command.getName().equalsIgnoreCase("breedingbuddies")) return null;
+
+        if (args.length == 1) {
+            // Sugerir subcomandos
+            return subCommands.keySet().stream()
+                    .filter(sub -> sub.startsWith(args[0].toLowerCase()))
+                    .sorted()
+                    .toList();
+        }
+
+        String sub = args[0].toLowerCase();
+
+        if (sub.equals("spawnanimal")) {
+            switch (args.length) {
+                case 2: // EntityType
+                    return Arrays.stream(EntityType.values())
+                            .filter(type -> type.getEntityClass() != null && Animals.class.isAssignableFrom(type.getEntityClass()))
+                            .map(Enum::name)
+                            .filter(name -> name.startsWith(args[1].toUpperCase()))
+                            .sorted()
+                            .toList();
+                case 3: // Friendship
+                    return List.of("100", "1000", "10000");
+                case 4: // Genetics
+                    return List.of("100", "1000", "10000");
+            }
+        }
+
+        if (sub.equals("spawnmount")) {
+            switch (args.length) {
+                case 2: // EntityType
+                    return Arrays.stream(EntityType.values())
+                            .filter(type -> type.getEntityClass() != null && AbstractHorse.class.isAssignableFrom(type.getEntityClass()))
+                            .map(Enum::name)
+                            .filter(name -> name.startsWith(args[1].toUpperCase()))
+                            .sorted()
+                            .toList();
+                case 3: // Friendship
+                    return List.of("100", "1000", "10000");
+                case 4: // Health
+                    return List.of("15", "30");
+                case 5: // Speed
+                    return List.of("0.2", "0.25", "0.3");
+                case 6: // Jump
+                    return List.of("0.5", "0.7", "1.0");
+            }
+        }
+
+        return Collections.emptyList();
     }
 }
