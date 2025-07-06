@@ -5,6 +5,7 @@ import org.bukkit.Chunk;
 public class ChunkData {
 	private Chunk chunk;
 	private int daysAbandoned = 0;
+	private int hasWater;
 	
 	public ChunkData(Chunk chunk) {
 		this.chunk = chunk;

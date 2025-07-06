@@ -6,5 +6,6 @@ public enum AnimalStates {
 	SICK,
 	ESCAPED,
 	UNOWNED,
-	SPAWNED
+	SPAWNED,
+	ABANDONED
 }

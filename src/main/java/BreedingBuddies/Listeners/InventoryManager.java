@@ -35,28 +35,42 @@ public class InventoryManager implements Listener {
         boolean isMountStatsItem = itemInHandId.equalsIgnoreCase(CustomItems.mountStatsItem);
 
         FarmAnimal animal = OwnershipManager.getAnimal(entity.getUniqueId());
-        boolean isBBAnimal = !(animal == null);
+        boolean isOwned = !(animal == null);
         boolean isFromPlayer = OwnershipManager.isOwner(player.getUniqueId(), entity.getUniqueId());
         boolean isUnowned = UnownedAnimalsManager.isUnowned(entity.getUniqueId());
         boolean playerIsStaff = player.hasPermission("breedingbuddies.use");
+        boolean isBBAnimal = (isOwned || isUnowned);
 
-        if (isEmptyHandSneak && isBBAnimal) {
-            if (isFromPlayer || isUnowned || playerIsStaff)
-                openAnimalMenu(player, animal);
+        if (isOwned)
+            DayChangeListener.changeDayOnInteract(entity, animal);
+
+        if (isEmptyHandSneak && MountUtils.isFullStatMount(entity)) {
+
+        } else if (isEmptyHandSneak && isBBAnimal) {
+            if (isUnowned) {
+                animal = UnownedAnimalsManager.getAnimal(entity.getUniqueId());
+            }
+            if (isFromPlayer || isUnowned || playerIsStaff) {
+                openAnimalMenu(player, animal, entity);
+            }
         } else if (isMountStatsItem && MountUtils.isFullStatMount(entity)) {
             if (isFromPlayer || isUnowned || playerIsStaff || !isBBAnimal) {
                 event.setCancelled(true);
-                if (!isBBAnimal)
+                if (!isOwned)
                     animal = new FarmAnimal(entity.getUniqueId(), 0, entity);
                 openMountMenu(player, (LivingEntity) entity, animal);
             }
         } else if (isMountStatsItem && isBBAnimal) {
-            if (isFromPlayer || isUnowned || playerIsStaff)
-                openAnimalMenu(player, animal);
+            if (isUnowned) {
+                animal = UnownedAnimalsManager.getAnimal(entity.getUniqueId());
+            }
+            if (isFromPlayer || isUnowned || playerIsStaff) {
+                openAnimalMenu(player, animal, entity);
+            }
         }
     }
 	
-    public void openAnimalMenu(Player player, FarmAnimal farmAnimal) {
+    public void openAnimalMenu(Player player, FarmAnimal farmAnimal, Entity entity) {
         String animalName = farmAnimal.getName();
         AnimalStates animalStatus = farmAnimal.getState();
         int friendshipPoints = farmAnimal.getFriendshipPoints();
@@ -66,7 +80,7 @@ public class InventoryManager implements Listener {
 
         // Primera fila: Nombre y Estado
         inv.setItem(3, createItem(Material.NAME_TAG, ChatColor.GOLD + "Name: " + animalName));
-        inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward()));
+        inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward(entity)));
         inv.setItem(5, createItem(Material.TOTEM_OF_UNDYING, ChatColor.GOLD + "State: " + animalStatus.toString()));
 
         // Segunda fila: Puntos de amistad
@@ -106,7 +120,7 @@ public class InventoryManager implements Listener {
 
         // Fila 1: Nombre y estado (slots 3, 4, 5)
         inv.setItem(3, createItem(Material.NAME_TAG, ChatColor.GOLD + "Name: " + animalName));
-        inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward()));
+        inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward(entity)));
         inv.setItem(5, createItem(Material.TOTEM_OF_UNDYING, ChatColor.GOLD + "State: " + animalStatus.toString()));
         inv.setItem(8, createItem(Material.SHEARS, ChatColor.GOLD + "Neutered: " + MountUtils.isNeutered(entity)));
 

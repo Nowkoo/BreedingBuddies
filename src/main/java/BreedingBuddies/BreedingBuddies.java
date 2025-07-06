@@ -23,6 +23,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 public class BreedingBuddies extends JavaPlugin implements TabCompleter {
@@ -36,13 +39,14 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
     private FileConfiguration numbersConfig = null;
     private File numbersFile = null;
     private final Map<String, SubCommand> subCommands = new HashMap<>();
-
+    private DayChangeScheduler dayScheduler;
     @Override
     public void onEnable() {
-    	PluginData.loadStableChunks();
+        PluginData.loadAllData();
         createAndLoadConfigs();
         registerListeners();
-        new DayChangeScheduler(this, Numbers.startingDayTime).startScheduler();
+        this.dayScheduler = new DayChangeScheduler(this, Numbers.startingDayHour, Numbers.startingDayMin);
+        this.dayScheduler.startScheduler();
         //this.getCommand("breedingbuddies").setExecutor(this);
         InitSubcommands();
         getCommand("breedingbuddies").setTabCompleter(this);
@@ -53,7 +57,7 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
     @Override
     public void onDisable() {
 //    	Cleanser.removeDisappearedAnimals();
-    	PluginData.saveAllData();
+    	PluginData.saveAllData(false);
     }
 
     public static BreedingBuddies getInstance() {
@@ -64,7 +68,7 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
         new BukkitRunnable() {
             @Override
             public void run() {
-                PluginData.saveAllData();
+                PluginData.saveAllData(false);
             }
         }.runTaskTimer(this, 0, 20 * 60 * 10);
     }
@@ -85,6 +89,13 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
 
     private boolean handleReload(CommandSender sender, String[] args) {
         createAndLoadConfigs();
+
+        if (this.dayScheduler != null) {
+            this.dayScheduler.cancel();
+        }
+        this.dayScheduler = new DayChangeScheduler(this, Numbers.startingDayHour, Numbers.startingDayMin);
+        this.dayScheduler.startScheduler();
+
         sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies]" + ChatColor.YELLOW + " Config reloaded successfully!");
         return true;
     }
@@ -191,7 +202,7 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
     }
 
     private boolean handleSaveData(CommandSender sender, String[] args) {
-        PluginData.saveAllData();
+        PluginData.saveAllData(false);
         sender.sendMessage(ChatColor.GREEN + "[BreedingBuddies] Data saved.");
         return true;
     }
@@ -203,7 +214,7 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
     }
 
     private boolean handleFix(CommandSender sender, String[] args) {
-        for (List<FarmAnimal> animals : PluginData.getPlayerAnimals().values()) {
+        for (Set<FarmAnimal> animals : PluginData.getPlayerAnimals().values()) {
             for (FarmAnimal animal : animals) {
                 animal.setCared(false);
                 animal.setFed(false);
@@ -259,6 +270,10 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
         numbersConfig = YamlConfiguration.loadConfiguration(numbersFile);
     }
 
+    public File getNumbersFile() {
+        return numbersFile;
+    }
+
     private void createConfigFile(File file, String content) {
         try {
             file.getParentFile().mkdirs();
@@ -276,6 +291,7 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
         Messages.loadConfig(messagesConfig);
         CustomItems.loadConfig(itemsConfig);
         BundleCollector.setBundlesConfig(bundlesConfig);
+        DayChangeListener.setNumbersConfig(numbersConfig);
         FarmAnimal.setBundlesConfig(bundlesConfig);
         BundleOpener.setBundlesConfig(bundlesConfig);
         MountStats.setConfigs(bundlesConfig, numbersConfig);
@@ -460,6 +476,9 @@ messages:
 
   neuteredHorse: "§6Neutered horses can't breed."
     # Info message that horses that are neutered cannot breed.
+    
+  tameFirst: "§6You must tame this animal before claiming it."
+    # Info message that untamed animals cannot be owned.
 """;
     }
 
@@ -477,7 +496,7 @@ friendshipLostNotCaring: 50       # Friendship lost for not caring/interacting.
 
 # ========== ENVIRONMENT LIMITS ==========
 maxAnimalsPerChunk: 20            # Max animals allowed per chunk.
-maxIrlDaysOut: 3                  # Real-life days before animal starts losing friendship due to not sleeping in a farm plot.
+maxIrlDaysOut: 3                  # Real-life days before animal loses his ownership due to not sleeping in a farm plot.
 maxIrlDaysChunkAbandoned: 5       # Number of real-life days a farm chunk can stay empty before it stops being considered a farm chunk.
 
 # ========== BREEDING & GENETICS ==========
@@ -487,7 +506,9 @@ geneticDivisorMultiplierToRetardProgression: 0.4  # Higher parent stats = slower
 
 # ========== REWARDS & TIME ==========
 hoursBetweenRewards: 8            # Real-life hours between reward eligibility.
-startingDayTime: 21               # In-game time at day start (21 = night).
+lastDayChangeDate: """ + Instant.now().getEpochSecond() + " # Epoch timestamp of the last change day (UTC)." + """ 
+startingDayHour: 21               # Hour of the day when the plugin triggers a day change (0–23) (UTC).
+startingDayMin: 1               # Minute of the hour when the plugin triggers a day change (0–59) (UTC).
 
 # ========== MOUNT RELATED ==========
 defaultMountStats:

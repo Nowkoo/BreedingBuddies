@@ -3,6 +3,8 @@ package BreedingBuddies.Listeners;
 import BreedingBuddies.*;
 import BreedingBuddies.Configurables.CustomItems;
 import BreedingBuddies.Configurables.Messages;
+import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -11,6 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Tameable;
 
@@ -45,6 +48,7 @@ public class TamingListener implements Listener {
 			if (entity instanceof Tameable) {
 				Tameable tameable = (Tameable) entity;
 				if (!tameable.isTamed()) {
+					player.sendMessage(Messages.tameFirst);
 					return;
 				}
 			}
@@ -74,8 +78,8 @@ public class TamingListener implements Listener {
 				OwnershipManager.registerOwnership(targetPlayer.getUniqueId(), animal);
 //				targetPlayer.sendMessage(String.format(Messages.nowCoowner, animal.getName()));
 //				player.sendMessage(String.format(Messages.ownershipShared, animal.getName()));
-				SoundManager.playAmethystClusterStepSound(animal.getEntity());
-				ParticleManager.cherryParticles(animal.getEntity());
+				SoundManager.playAmethystClusterStepSound(targetPlayer);
+				ParticleManager.cherryParticles(targetPlayer);
 				itemInHand.setAmount(itemInHand.getAmount() - 1);
 			}
 		} else {
@@ -102,6 +106,7 @@ public class TamingListener implements Listener {
 		} else if (OwnershipManager.isOwner(player.getUniqueId(), entity.getUniqueId())) {
 			ItemUtils.storeDataInItem(itemInHand, entity.getUniqueId().toString(), plugin);
 			SoundManager.playAmethystStepSound(entity);
+			ParticleManager.cherryParticles(entity);
 		} else {
 			player.sendMessage(String.format(Messages.onlyOwnerCanShare, entity.getCustomName()));
 		}

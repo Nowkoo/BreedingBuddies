@@ -22,22 +22,22 @@ public class BreedingListener implements Listener {
 			Entity motherEntity = event.getMother();
 			Entity fatherEntity = event.getFather();
 			Entity childEntity = event.getEntity();
-			
+
 			FarmAnimal mother = OwnershipManager.getAnimal(motherEntity.getUniqueId());
 	        FarmAnimal father = OwnershipManager.getAnimal(fatherEntity.getUniqueId());
 
-			AbstractHorse fatherAbstractHorse = (AbstractHorse) motherEntity;
-			AbstractHorse motherAbstractHorse = (AbstractHorse) fatherEntity;
-
 			boolean playerIsOwner = playerOwnsParents(player, fatherEntity, motherEntity);
-			
+
 			if (playerIsOwner) {
 				if (MountUtils.isNeutered(motherEntity) || MountUtils.isNeutered(fatherEntity)) {
-					player.sendMessage(Messages.neuteredHorse);
-					fatherAbstractHorse.setLoveModeTicks(0);
-					motherAbstractHorse.setLoveModeTicks(0);
-					event.setCancelled(true);
-					return;
+					if (mother instanceof AbstractHorse && father instanceof  AbstractHorse) {
+						player.sendMessage(Messages.neuteredHorse);
+						((AbstractHorse) father).setLoveModeTicks(0);
+						((AbstractHorse) mother).setLoveModeTicks(0);
+						event.setCancelled(true);
+						event.setExperience(0);
+						return;
+					}
 				}
 				if (MountUtils.isFullStatMount(childEntity)) {
 					Bukkit.getScheduler().runTaskLater(BreedingBuddies.getInstance(), () -> {
@@ -50,9 +50,10 @@ public class BreedingListener implements Listener {
 					}, 1L);
 
 					FarmAnimal child = new FarmAnimal(childEntity.getUniqueId(), childEntity);
-					//UnownedAnimalsManager.addUnownedAnimal(child);
-				} else
+					UnownedAnimalsManager.addUnownedAnimal(child);
+				} else {
 					specialBreed(mother, father, childEntity);
+				}
 			} else if (parentsHaveOwner(fatherEntity, motherEntity) && !playerIsOwner) {
 				event.setCancelled(true);
 			}
@@ -71,7 +72,7 @@ public class BreedingListener implements Listener {
 	    childGeneticPoints = Math.min(childGeneticPoints, Numbers.maxFriendshipAndGenetics); // asegurarse de no exceder el máximo
 
 	    FarmAnimal child = new FarmAnimal(childEntity.getUniqueId(), childGeneticPoints, childEntity);
-	    UnownedAnimalsManager.addUnownedAnimal(child);
+		UnownedAnimalsManager.addUnownedAnimal(child);
 	}
 
 	private int calculateGeneticVariance(int geneticAverage) {

@@ -3,15 +3,12 @@ package BreedingBuddies;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class Cleanser {
 	public static void removeDisappearedAnimals() {
-		Map<UUID, List<FarmAnimal>> animals = PluginData.getPlayerAnimals();
-		for (List<FarmAnimal> animalList : animals.values()) {
+		Map<UUID, Set<FarmAnimal>> animals = PluginData.getPlayerAnimals();
+		for (Set<FarmAnimal> animalList : animals.values()) {
 			Iterator<FarmAnimal> it = animalList.iterator();
 			while (it.hasNext()) {
 				FarmAnimal animal = it.next();

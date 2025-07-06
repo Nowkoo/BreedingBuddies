@@ -6,6 +6,7 @@ import BreedingBuddies.Configurables.Messages;
 import BreedingBuddies.Configurables.Numbers;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,15 +39,18 @@ public class BundleCollector implements Listener {
 		Entity entity = event.getRightClicked();
 		ItemStack itemInHand = player.getInventory().getItemInMainHand();
 
-		ConfigurationSection animalSection = bundlesConfig.getConfigurationSection(entity.getType().toString());
-		if (!animalSection.getBoolean("bundlesEnabled", false)) return;
-
 		if (OwnershipManager.isOwner(player.getUniqueId(), entity.getUniqueId())
 				&& event.getHand().equals(EquipmentSlot.HAND)
 				&& itemInHand != null
 				&& CustomItems.collectorsItem.equalsIgnoreCase(ItemUtils.getItemId(itemInHand))
 				) {
-			if (canCollect(entity.getUniqueId())) {
+
+			ConfigurationSection animalSection = bundlesConfig.getConfigurationSection(entity.getType().toString().toUpperCase());
+			if (animalSection == null || !animalSection.getBoolean("bundlesEnabled", false)) return;
+
+			if (entity instanceof AbstractHorse)
+				event.setCancelled(true);
+			if (canCollect(entity)) {
 				FarmAnimal animal = OwnershipManager.getAnimal(entity.getUniqueId());
 				animal.setLastRewardCollected(new Date());
 				ItemStack bundle = generateBundle(player, entity);
@@ -109,12 +113,12 @@ public class BundleCollector implements Listener {
         return tiers.get(tierIndex);
     }
 
-	private boolean canCollect(UUID uniqueId) {
-	    FarmAnimal animal = OwnershipManager.getAnimal(uniqueId);
-	    if (animal != null && animal.canCollectReward()) {
-	        return true;
-	    }
-	    SoundManager.playAngryCowSound(animal.getEntity());
-	    return false;
+	private  boolean canCollect(Entity entity) {
+		FarmAnimal animal = OwnershipManager.getAnimal(entity.getUniqueId());
+		if (animal != null && animal.canCollectReward()) {
+			return true;
+		}
+		SoundManager.playAngryCowSound(entity);
+		return false;
 	}
 }

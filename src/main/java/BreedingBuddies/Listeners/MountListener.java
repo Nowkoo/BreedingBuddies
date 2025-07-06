@@ -21,7 +21,13 @@ public class MountListener implements Listener {
     @EventHandler
     public void onMount(EntityMountEvent event) {
         Entity entity =  event.getMount();
-        Player player = (Player) event.getEntity();
+        Entity rider = event.getEntity();
+
+        if (!(rider instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) rider;
         if (entity instanceof Animals) {
             //se cancela el evento si el caballo tiene dueño y no es el que interacciona
             if (OwnershipManager.hasOwner(entity.getUniqueId()) && !OwnershipManager.isOwner(player.getUniqueId(), entity.getUniqueId())) {

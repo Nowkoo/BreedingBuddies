@@ -225,7 +225,7 @@ public class MountUtils {
     public static boolean isNeutered(Entity entity) {
         NamespacedKey key = new NamespacedKey(BreedingBuddies.getInstance(), "is_neutered");
         Byte value = entity.getPersistentDataContainer().get(key, PersistentDataType.BYTE);
-        return value != null && value == 1;
+        return (value != null && value == 1) || entity.getScoreboardTags().contains("ho.isNeutered");
     }
 }
 

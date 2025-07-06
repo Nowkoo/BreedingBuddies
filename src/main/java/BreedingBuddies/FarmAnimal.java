@@ -5,6 +5,7 @@ import BreedingBuddies.Listeners.BundleCollector;
 import org.bukkit.Chunk;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Entity;
 
 import java.util.*;
@@ -15,13 +16,16 @@ public class FarmAnimal {
 	private UUID uuid;
     private String name;
     private ArrayList<UUID> ownersUuids = new ArrayList<>();
-    private Entity entity;
+    //private Entity entity;
 	private int geneticPoints;
     private AnimalStates state;
     private boolean fed = false;
     private boolean cared = false;
-    private Chunk sleptChunk;
     private int daysOut = 0;
+    private boolean sleptInStable = true;
+    private boolean spaceNeeded = false;
+    private boolean waterNeeded = false;
+    private boolean stableNeeded = true;
     private Date lastRewardCollected;
     //private Date lastUpdated;
 
@@ -32,51 +36,63 @@ public class FarmAnimal {
         this.uuid = uuid;
         this.name = name;
         this.ownersUuids.add(uuidOwner);
-        this.entity = entity;
-        int geneticPoints = new Random().nextInt(Numbers.initialGeneticMax);
-        calcGeneticsIfIsMount(entity, geneticPoints);
+        this.geneticPoints = new Random().nextInt(Numbers.initialGeneticMax);
         this.state = AnimalStates.HAPPY;
+        if (entity instanceof AbstractHorse) {
+            calcGeneticsIfIsMount(entity);
+            stableNeeded = false;
+        }
     }
     
     public FarmAnimal(UUID uuid, String name, UUID uuidOwner, Entity entity, int genetics) {
         this.uuid = uuid;
         this.name = name;
         this.ownersUuids.add(uuidOwner);
-        this.entity = entity;
-        calcGeneticsIfIsMount(entity, genetics);
         this.state = AnimalStates.HAPPY;
+        this.geneticPoints = genetics;
+        if (entity instanceof AbstractHorse) {
+            calcGeneticsIfIsMount(entity);
+            stableNeeded = false;
+        }
     }
     
     public FarmAnimal(UUID uuid, String name, UUID uuidOwner, Entity entity, int genetics, int friendship) {
         this.uuid = uuid;
         this.name = "???";
-        this.entity = entity;
-        calcGeneticsIfIsMount(entity, genetics);
         this.friendshipPoints = friendship;
         this.state = AnimalStates.UNOWNED;
+        this.geneticPoints = geneticPoints;
+        if (entity instanceof AbstractHorse) {
+            calcGeneticsIfIsMount(entity);
+            stableNeeded = false;
+        }
     }
 
     public FarmAnimal(UUID uuid, int geneticPoints, Entity entity) {
         this.uuid = uuid;
         this.name = "???";
-        this.entity = entity;
-        calcGeneticsIfIsMount(entity, geneticPoints);
         this.state = AnimalStates.UNOWNED;
+        this.geneticPoints = geneticPoints;
+        if (entity instanceof AbstractHorse) {
+            calcGeneticsIfIsMount(entity);
+            stableNeeded = false;
+        }
     }
 
     public FarmAnimal(UUID uuid, Entity entity) {
         this.uuid = uuid;
         this.name = "???";
-        this.entity = entity;
-        calcGeneticsIfIsMount(entity, geneticPoints);
         this.state = AnimalStates.UNOWNED;
+        if (entity instanceof AbstractHorse) {
+            calcGeneticsIfIsMount(entity);
+            stableNeeded = false;
+        }
     }
     
-    public FarmAnimal (UUID animalUUID, String name, List<UUID> owners, Entity entity) {
+    public FarmAnimal (UUID animalUUID, String name, List<UUID> owners) {
     	this.uuid = animalUUID;
     	this.name = name;
     	this.ownersUuids = (ArrayList<UUID>) owners;
-    	this.entity = entity;
     }
 
     public UUID getUuid() {
@@ -94,6 +110,9 @@ public class FarmAnimal {
     public ArrayList<UUID> getOwnersUuids() {
         return ownersUuids;
     }
+    public void setOwnersUuids (ArrayList<UUID> newOwners) {
+        this.ownersUuids = newOwners;
+    }
 
     public int getFriendshipPoints() {
         return friendshipPoints;
@@ -108,6 +127,20 @@ public class FarmAnimal {
         if (friendshipPoints < 0) {
         	friendshipPoints = 0;
         }
+    }
+
+    public void changeDay(boolean waterNeeded, boolean spaceNeeded, boolean sleptInStable, int friendshipLost) {
+        if (!spaceNeeded && !waterNeeded && sleptInStable && fed && cared)
+            state = AnimalStates.HAPPY;
+        else
+            state = AnimalStates.SAD;
+
+        this.spaceNeeded = spaceNeeded;
+        this.waterNeeded = waterNeeded;
+        this.sleptInStable = sleptInStable;
+        fed = false;
+        cared = false;
+        setFriendshipPoints(friendshipPoints - friendshipLost);
     }
 
     public boolean getFed() {
@@ -138,14 +171,6 @@ public class FarmAnimal {
         return geneticPoints;
     }
 
-    public Chunk getSleptChunk() {
-        return sleptChunk;
-    }
-
-    public void setSleptChunk(Chunk sleptChunk) {
-        this.sleptChunk = sleptChunk;
-    }
-
     public int getDaysOut() {
         return daysOut;
     }
@@ -154,9 +179,9 @@ public class FarmAnimal {
         daysOut++;
     }
 
-    public Entity getEntity() {
-        return entity;
-    }
+//    public Entity getEntity() {
+//        return entity;
+//    }
 
     public Date getLastRewardCollected() {
         return lastRewardCollected;
@@ -184,7 +209,7 @@ public class FarmAnimal {
         FarmAnimal.bundlesConfig = bundlesConfig;
     }
 
-    public String timeForNextReward() {
+    public String timeForNextReward(Entity entity) {
         ConfigurationSection animalSection = bundlesConfig.getConfigurationSection(entity.getType().toString());
         if (state != AnimalStates.HAPPY || !animalSection.getBoolean("bundlesEnabled", false)) {
     		return "No bundle";
@@ -206,13 +231,10 @@ public class FarmAnimal {
         return Math.max(remainingTimeMillis, 0);
     }
 
-    void calcGeneticsIfIsMount(Entity entity, int geneticPoints)
+    void calcGeneticsIfIsMount(Entity entity)
     {
-        if (MountUtils.isFullStatMount(entity)) {
+        if (MountUtils.isFullStatMount(entity))
             this.geneticPoints = MountUtils.getGenetics(entity);
-        } else {
-            this.geneticPoints = geneticPoints;
-        }
     }
 
 	public void resetDaysOut() {
@@ -221,8 +243,8 @@ public class FarmAnimal {
 	
 	private int friendshipPoints = 0;
     public void setFriendshipPoints(int friendshipPoints) {
-		this.friendshipPoints = friendshipPoints;
-	}
+        this.friendshipPoints = Math.max(friendshipPoints, 0);
+    }
 
 	public void setGeneticPoints(int geneticPoints) {
 		this.geneticPoints = geneticPoints;
@@ -237,5 +259,36 @@ public class FarmAnimal {
     }
     public boolean isNeutered(Entity entity) {
         return entity.getScoreboardTags().contains("bb.isNeutered");
+    }
+    public boolean isSleptInStable() {
+        return sleptInStable;
+    }
+
+    public void setSleptInStable(boolean sleptInStable) {
+        this.sleptInStable = sleptInStable;
+    }
+
+    public boolean isSpaceNeeded() {
+        return spaceNeeded;
+    }
+
+    public void setSpaceNeeded(boolean spaceNeeded) {
+        this.spaceNeeded = spaceNeeded;
+    }
+
+    public boolean isWaterNeeded() {
+        return waterNeeded;
+    }
+
+    public void setWaterNeeded(boolean waterNeeded) {
+        this.waterNeeded = waterNeeded;
+    }
+
+    public boolean isStableNeeded() {
+        return stableNeeded;
+    }
+
+    public void setStableNeeded(boolean stableNeeded) {
+        this.stableNeeded = stableNeeded;
     }
 }

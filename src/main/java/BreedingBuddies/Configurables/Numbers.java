@@ -16,34 +16,35 @@ public class Numbers {
     public static double friendshipInfluenceMultiplier;
     public static double geneticDivisorMultiplierToRetardProgression;
     public static double hoursBetweenRewards;
-    public static int startingDayTime;
+    public static int startingDayHour;
+    public static int startingDayMin;
+
     public static int minMountHealth;
     public static double minMountSpeed;
 
     public static double minMountJump;
-    public static int maxMountHealth;
-    public static double maxMountSpeed;
-
-    public static double maxMountJump;
     public static double mountNerfDivisor;
     public static boolean nerfMountStats;
+    static FileConfiguration config;
 
-    public static void loadConfig(FileConfiguration config) {
-        maxFriendshipAndGenetics = config.getInt("maxFriendshipAndGenetics");
-        initialGeneticMax = config.getInt("initialGeneticMax");
-        friendshipByFeeding = config.getInt("friendshipByFeeding");
-        friendshipByCaring = config.getInt("friendshipByCaring");
-        friendshipLostNotFeeding = config.getInt("friendshipLostNotFeeding");
-        friendshipLostNotCaring = config.getInt("friendshipLostNotCaring");
-        maxAnimalsPerChunk = config.getInt("maxAnimalsPerChunk");
-        maxIrlDaysOut = config.getInt("maxIrlDaysOut");
-        maxIrlDaysChunkAbandoned = config.getInt("maxIrlDaysChunkAbandoned");
-        geneticVarianceMultiplier = config.getDouble("geneticVarianceMultiplier");
-        friendshipInfluenceMultiplier = config.getDouble("friendshipInfluenceMultiplier");
-        geneticDivisorMultiplierToRetardProgression = config.getDouble("geneticDivisorMultiplierToRetardProgression");
-        hoursBetweenRewards = config.getDouble("hoursBetweenRewards");
-        startingDayTime = config.getInt("startingDayTime");
-        mountNerfDivisor = config.getDouble("mountNerfDivisor");
-        nerfMountStats = config.getBoolean("nerfMountStats");
+    public static void loadConfig(FileConfiguration numbersConfig) {
+        config = numbersConfig;
+        maxFriendshipAndGenetics = numbersConfig.getInt("maxFriendshipAndGenetics");
+        initialGeneticMax = numbersConfig.getInt("initialGeneticMax");
+        friendshipByFeeding = numbersConfig.getInt("friendshipByFeeding");
+        friendshipByCaring = numbersConfig.getInt("friendshipByCaring");
+        friendshipLostNotFeeding = numbersConfig.getInt("friendshipLostNotFeeding");
+        friendshipLostNotCaring = numbersConfig.getInt("friendshipLostNotCaring");
+        maxAnimalsPerChunk = numbersConfig.getInt("maxAnimalsPerChunk");
+        maxIrlDaysOut = numbersConfig.getInt("maxIrlDaysOut");
+        maxIrlDaysChunkAbandoned = numbersConfig.getInt("maxIrlDaysChunkAbandoned");
+        geneticVarianceMultiplier = numbersConfig.getDouble("geneticVarianceMultiplier");
+        friendshipInfluenceMultiplier = numbersConfig.getDouble("friendshipInfluenceMultiplier");
+        geneticDivisorMultiplierToRetardProgression = numbersConfig.getDouble("geneticDivisorMultiplierToRetardProgression");
+        hoursBetweenRewards = numbersConfig.getDouble("hoursBetweenRewards");
+        startingDayHour = numbersConfig.getInt("startingDayHour");
+        startingDayMin = numbersConfig.getInt("startingDayMin");
+        mountNerfDivisor = numbersConfig.getDouble("mountNerfDivisor");
+        nerfMountStats = numbersConfig.getBoolean("nerfMountStats");
     }
 }
