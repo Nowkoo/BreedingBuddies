@@ -5,6 +5,7 @@ import net.Indyuce.mmoitems.MMOItems;
 import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
 import net.Indyuce.mmoitems.manager.ItemManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -42,6 +43,18 @@ public class ItemUtils {
 	        return meta.getDisplayName();
 	    }
 	    return null;
+	}
+
+	public static ItemStack changeCustomName(ItemStack item, String nuevoNombre) {
+		if (item == null || item.getType().isAir()) return item;
+
+		ItemMeta meta = item.getItemMeta();
+		if (meta != null) {
+			meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', nuevoNombre));
+			item.setItemMeta(meta);
+		}
+
+		return item;
 	}
 	
 	public static void storeDataInItem(ItemStack item, String data, JavaPlugin plugin) {

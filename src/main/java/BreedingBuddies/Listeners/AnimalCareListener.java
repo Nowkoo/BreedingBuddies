@@ -43,7 +43,6 @@ public class AnimalCareListener implements Listener {
 				}
 			}
 		}
-
 	}
 	
 	public void feed(FarmAnimal animal, Entity entity, Player player, ItemStack itemInHand) {

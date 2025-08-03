@@ -32,7 +32,7 @@ public class DayChangeListener implements Listener {
 
 	@EventHandler
 	public void onDayChange(DayChangeEvent event) {
-		asyncGlobalChangeDay(1);
+		asyncGlobalChangeDay(null, 1);
 		try {
 			manageChunkUse();
 		} catch (Error e) {
@@ -70,7 +70,7 @@ public class DayChangeListener implements Listener {
 			}
 			if (animal.getDaysOut() > Numbers.maxIrlDaysOut) {
 				animal.setState(AnimalStates.ESCAPED);
-				animal.setOwnersUuids(new ArrayList<UUID>());
+				animal.setOwnersUuids(new HashSet<UUID>());
 				UnownedAnimalsManager.addUnownedAnimal(animal);
 				OwnershipManager.removeAnimal(animal.getUuid());
 			}
@@ -153,7 +153,7 @@ public class DayChangeListener implements Listener {
 		);
 	}
 
-	private static void asyncGlobalChangeDay(int daysChecked) {
+	private static void asyncGlobalChangeDay(UUID excludedEntity, int daysChecked) {
 		synchronized (changeDayLock) {
 			if (isChangingDay) return;
 			isChangingDay = true;
@@ -161,7 +161,7 @@ public class DayChangeListener implements Listener {
 		Plugin bb = BreedingBuddies.getInstance();
 		Bukkit.getScheduler().runTaskAsynchronously(bb, () -> {
 			try {
-				globalChangeDay(null, daysChecked);
+				globalChangeDay(excludedEntity, daysChecked);
 				PluginData.saveAllData(true);
 				updateLastDayChangeDate();
 			} catch (Exception e) {
@@ -199,7 +199,7 @@ public class DayChangeListener implements Listener {
 		int daysChecked = daysBetween(getLastChangeDate(), LocalDateTime.now());
 		if (daysChecked < 1) return;
 		IndividualChangeDay(entity, animal, daysChecked);
-		asyncGlobalChangeDay(daysChecked);
+		asyncGlobalChangeDay(entity.getUniqueId(), daysChecked);
 	}
 
 	public static void changeDayOnReport() {

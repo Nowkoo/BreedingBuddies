@@ -16,10 +16,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import static BreedingBuddies.MountUtils.*;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.UUID;
 
 public class InventoryManager implements Listener {
     @EventHandler
@@ -76,12 +79,18 @@ public class InventoryManager implements Listener {
         int friendshipPoints = farmAnimal.getFriendshipPoints();
         int geneticPoints = farmAnimal.getGeneticPoints();
 
-        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.GOLD + Messages.inventoryName);
+        UUID entityUUID = entity.getUniqueId();
+        AnimalInventoryHolder holder = new AnimalInventoryHolder(entityUUID);
+        Inventory inv = Bukkit.createInventory(holder, 27, ChatColor.GOLD + Messages.inventoryName);
 
         // Primera fila: Nombre y Estado
         inv.setItem(3, createItem(Material.NAME_TAG, ChatColor.GOLD + "Name: " + animalName));
         inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward(entity)));
         inv.setItem(5, createItem(Material.TOTEM_OF_UNDYING, ChatColor.GOLD + "State: " + animalStatus.toString()));
+
+        Set<UUID> owners = farmAnimal.getOwnersUuids();
+        if (owners.contains(player.getUniqueId()))
+            inv.setItem(26, createItem(Material.WRITABLE_BOOK, ChatColor.DARK_RED + "Remove ownership")); // Slot 36 = índice 35
 
         // Segunda fila: Puntos de amistad
         int maxFriendshipPoints = Numbers.maxFriendshipAndGenetics;
@@ -104,7 +113,6 @@ public class InventoryManager implements Listener {
                 inv.setItem(20 + i, createItem(Material.VEX_SPAWN_EGG, ChatColor.YELLOW + "Genetics: " + geneticPoints + "/" + maxGeneticPoints));
             }
         }
-
         player.openInventory(inv);
     }
 
@@ -116,13 +124,19 @@ public class InventoryManager implements Listener {
         int maxPoints = Numbers.maxFriendshipAndGenetics;
         int pointsPerHeart = maxPoints / 5;
 
-        Inventory inv = Bukkit.createInventory(null, 36, ChatColor.GOLD + Messages.inventoryName);
+        UUID entityUUID = entity.getUniqueId();
+        AnimalInventoryHolder holder = new AnimalInventoryHolder(entityUUID);
+        Inventory inv = Bukkit.createInventory(holder, 36, ChatColor.GOLD + Messages.inventoryName);
 
         // Fila 1: Nombre y estado (slots 3, 4, 5)
         inv.setItem(3, createItem(Material.NAME_TAG, ChatColor.GOLD + "Name: " + animalName));
         inv.setItem(4, createItem(Material.CHEST, ChatColor.GOLD + "Next bundle: " + farmAnimal.timeForNextReward(entity)));
         inv.setItem(5, createItem(Material.TOTEM_OF_UNDYING, ChatColor.GOLD + "State: " + animalStatus.toString()));
         inv.setItem(8, createItem(Material.SHEARS, ChatColor.GOLD + "Neutered: " + MountUtils.isNeutered(entity)));
+
+        Set<UUID> owners = farmAnimal.getOwnersUuids();
+        if (owners.contains(player.getUniqueId()))
+            inv.setItem(35, createItem(Material.WRITABLE_BOOK, ChatColor.DARK_RED + "Remove ownership")); // Slot 36 = índice 35
 
         // Fila 2: Amistad (slots 11–15)
         for (int i = 0; i < 5; i++) {
@@ -148,7 +162,6 @@ public class InventoryManager implements Listener {
         player.openInventory(inv);
     }
 
-
     private void addStatBar(Inventory inv, int startSlot, double current, double max, Material filled, Material empty, String label) {
         int slots = 5;
         double valuePerSlot = max / (double) slots;
@@ -170,13 +183,23 @@ public class InventoryManager implements Listener {
     
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-    	if (event.getClickedInventory() == null) {
-            return;
-        }
-    	
-    	if (event.getView().getTitle().equalsIgnoreCase(ChatColor.GOLD + Messages.inventoryName)) {
-            if (event.getClickedInventory().getSize() == 27 || event.getClickedInventory().getSize() == 36) {
-            	event.setCancelled(true);
+        InventoryHolder holder = event.getInventory().getHolder();
+        if (holder instanceof AnimalInventoryHolder animalHolder) {
+            event.setCancelled(true);
+            UUID entityUUID = animalHolder.getEntityUUID();
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType() != Material.WRITABLE_BOOK) return;
+            if (event.getWhoClicked() instanceof Player player) {
+                FarmAnimal animal = OwnershipManager.getAnimal(entityUUID, player.getUniqueId());
+                if (animal != null) {
+                    OwnershipManager.removeOwnership(player.getUniqueId(), animal);
+                    player.closeInventory();
+                    player.sendMessage(String.format(Messages.removeOwnership, animal.getName()));
+                    if (animal.getOwnersUuids().isEmpty()) {
+                        animal.setState(AnimalStates.UNOWNED);
+                        UnownedAnimalsManager.addUnownedAnimal(animal);
+                    }
+                }
             }
         }
     }

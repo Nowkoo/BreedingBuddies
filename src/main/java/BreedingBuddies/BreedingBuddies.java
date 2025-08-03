@@ -216,8 +216,8 @@ public class BreedingBuddies extends JavaPlugin implements TabCompleter {
     private boolean handleFix(CommandSender sender, String[] args) {
         for (Set<FarmAnimal> animals : PluginData.getPlayerAnimals().values()) {
             for (FarmAnimal animal : animals) {
-                animal.setCared(false);
-                animal.setFed(false);
+                //animal.setCared(true);
+                //animal.setFed(true);
                 animal.setState(AnimalStates.HAPPY);
             }
         }
@@ -479,6 +479,9 @@ messages:
     
   tameFirst: "§6You must tame this animal before claiming it."
     # Info message that untamed animals cannot be owned.
+    
+  removeOwnership: "§6You are no longer the owner of %s."
+    # Indicates that the animal is not longer linked to the player.
 """;
     }
 

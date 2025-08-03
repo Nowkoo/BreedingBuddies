@@ -37,12 +37,12 @@ public class OwnershipManager {
 		}
 	}
 
-	public void removeOwnership (UUID playerUuid, FarmAnimal animal) {
+	public static void removeOwnership (UUID playerUuid, FarmAnimal animal) {
 		Set<FarmAnimal> animals = PluginData.getPlayerAnimals().get(playerUuid);
 		if (animals != null) {
+			animal.getOwnersUuids().remove(playerUuid);
 			animals.remove(animal);
 			PluginData.getPlayerAnimals().put(playerUuid, animals);
-			animal.getOwnersUuids().remove(playerUuid);
 		}
 	}
 
@@ -93,7 +93,7 @@ public class OwnershipManager {
 	
 	public static FarmAnimal getAnimal(UUID animalUuid, UUID playerUuid) {
 		Set<FarmAnimal> animals = PluginData.getPlayerAnimals().get(playerUuid);
-		
+
 		if (animals != null) {
 			for (FarmAnimal animal : animals) {
 				if (animal.getUuid().equals(animalUuid)) {

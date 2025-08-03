@@ -2,12 +2,15 @@ package BreedingBuddies;
 
 import BreedingBuddies.Configurables.Numbers;
 import BreedingBuddies.Listeners.BundleCollector;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.Entity;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -15,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class FarmAnimal {
 	private UUID uuid;
     private String name;
-    private ArrayList<UUID> ownersUuids = new ArrayList<>();
+    private Set<UUID> ownersUuids = new HashSet<>();
     //private Entity entity;
 	private int geneticPoints;
     private AnimalStates state;
@@ -27,7 +30,7 @@ public class FarmAnimal {
     private boolean waterNeeded = false;
     private boolean stableNeeded = true;
     private Date lastRewardCollected;
-    //private Date lastUpdated;
+    private Date lastUpdated;
 
     private static FileConfiguration bundlesConfig;
 
@@ -61,7 +64,7 @@ public class FarmAnimal {
         this.name = "???";
         this.friendshipPoints = friendship;
         this.state = AnimalStates.UNOWNED;
-        this.geneticPoints = geneticPoints;
+        this.geneticPoints = genetics;
         if (entity instanceof AbstractHorse) {
             calcGeneticsIfIsMount(entity);
             stableNeeded = false;
@@ -89,10 +92,10 @@ public class FarmAnimal {
         }
     }
     
-    public FarmAnimal (UUID animalUUID, String name, List<UUID> owners) {
+    public FarmAnimal (UUID animalUUID, String name, Set<UUID> owners) {
     	this.uuid = animalUUID;
     	this.name = name;
-    	this.ownersUuids = (ArrayList<UUID>) owners;
+    	this.ownersUuids = (Set<UUID>) owners;
     }
 
     public UUID getUuid() {
@@ -107,10 +110,10 @@ public class FarmAnimal {
         this.name = name;
     }
 
-    public ArrayList<UUID> getOwnersUuids() {
+    public Set<UUID> getOwnersUuids() {
         return ownersUuids;
     }
-    public void setOwnersUuids (ArrayList<UUID> newOwners) {
+    public void setOwnersUuids (Set<UUID> newOwners) {
         this.ownersUuids = newOwners;
     }
 
@@ -130,6 +133,16 @@ public class FarmAnimal {
     }
 
     public void changeDay(boolean waterNeeded, boolean spaceNeeded, boolean sleptInStable, int friendshipLost) {
+        if (lastUpdated != null) {
+            Instant lastInstant = lastUpdated.toInstant();
+            Instant now = Instant.now();
+            long hoursSinceUpdate = ChronoUnit.HOURS.between(lastInstant, now);
+
+            if (hoursSinceUpdate < 24) {
+                return; // Salimos del método sin hacer nada
+            }
+        }
+
         if (!spaceNeeded && !waterNeeded && sleptInStable && fed && cared)
             state = AnimalStates.HAPPY;
         else
@@ -141,6 +154,7 @@ public class FarmAnimal {
         fed = false;
         cared = false;
         setFriendshipPoints(friendshipPoints - friendshipLost);
+        setLastUpdated(new Date());
     }
 
     public boolean getFed() {
@@ -290,5 +304,13 @@ public class FarmAnimal {
 
     public void setStableNeeded(boolean stableNeeded) {
         this.stableNeeded = stableNeeded;
+    }
+
+    public Date getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(Date lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 }

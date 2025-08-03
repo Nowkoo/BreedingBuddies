@@ -33,8 +33,6 @@ import org.json.simple.parser.JSONParser;
 
 
 public class PluginData implements Listener {
-	static  boolean defStableNeededUnownedAdded = false;
-	static  boolean defStableNeededAdded = false;
 
 	private static Map<UUID, FarmAnimal> unownedAnimals = new HashMap<>();
 	private static Map<UUID, Set<FarmAnimal>> playerAnimals = new HashMap<>();
@@ -186,6 +184,12 @@ public class PluginData implements Listener {
 					animalJson.put("lastRewardCollected", null);
 				}
 
+				if (animal.getLastUpdated() != null) {
+					animalJson.put("lastUpdated", animal.getLastUpdated().getTime());
+				} else {
+					animalJson.put("lastUpdated", null);
+				}
+
 				animalsJsonArray.add(animalJson);
 			}
 
@@ -210,7 +214,6 @@ public class PluginData implements Listener {
 			}
 			JSONParser parser = new JSONParser();
 			JSONObject playerJson = (JSONObject) parser.parse(new FileReader(file));
-
 			JSONArray animalsJsonArray = (JSONArray) playerJson.get("animals");
 
 			for (Object animalObj : animalsJsonArray) {
@@ -220,18 +223,13 @@ public class PluginData implements Listener {
 				String name = (String) animalJson.get("name");
 				// Parsear ownersUuids de JSONArray a List<UUID>
 				JSONArray ownersJsonArray = (JSONArray) animalJson.get("ownersUuids");
-				List<UUID> ownersUuids = new ArrayList<>();
+				Set<UUID> ownersUuids = new HashSet<>();
 				for (Object ownerObj : ownersJsonArray) {
 					ownersUuids.add(UUID.fromString((String) ownerObj));
 				}
 
-				// Obtener el Chunk del mundo
-				JSONObject sleptChunkJson = (JSONObject) animalJson.get("sleptChunk");
-
 				// Construir el objeto FarmAnimal
 				FarmAnimal farmAnimal = new FarmAnimal(animalUUID, name, ownersUuids);
-				//ELIMINAR
-				//farmAnimal.setStableNeeded(true);
 
 				farmAnimal.setStableNeeded((boolean) animalJson.get("stableNeeded"));
 				farmAnimal.setFriendshipPoints(((Long) animalJson.get("friendshipPoints")).intValue());
@@ -239,18 +237,15 @@ public class PluginData implements Listener {
 				farmAnimal.setState(AnimalStates.valueOf((String) animalJson.get("state")));
 				farmAnimal.setFed((boolean) animalJson.get("fed"));
 				farmAnimal.setCared((boolean) animalJson.get("cared"));
-				//loadunownedah
-				//farmAnimal.setSleptInStable(true);
 				farmAnimal.setSleptInStable((boolean) animalJson.get("sleptInStable"));
-//	            farmAnimal.setSleptInStable(true);
-//	            farmAnimal.setSpaceNeeded(false);
-//	            farmAnimal.setWaterNeeded(false);
-				//farmAnimal.setSleptInStable((boolean) animalJson.get("sleptInStable"));
 				farmAnimal.setSpaceNeeded((boolean) animalJson.get("spaceNeeded"));
 				farmAnimal.setWaterNeeded((boolean) animalJson.get("waterNeeded"));
 				farmAnimal.setDaysOut(((Long) animalJson.get("daysOut")).intValue());
 				if (animalJson.get("lastRewardCollected") != null) {
 					farmAnimal.setLastRewardCollected(new Date((Long) animalJson.get("lastRewardCollected")));
+				}
+				if (animalJson.get("lastUpdated") != null) {
+					farmAnimal.setLastUpdated(new Date((Long) animalJson.get("lastUpdated")));
 				}
 
 				unownedAnimals.put(animalUUID, farmAnimal);
@@ -342,6 +337,12 @@ public class PluginData implements Listener {
 					animalJson.put("lastRewardCollected", null);
 				}
 
+				if (animal.getLastUpdated() != null) {
+					animalJson.put("lastUpdated", animal.getLastUpdated().getTime());
+				} else {
+					animalJson.put("lastUpdated", null);
+				}
+
 				animalsJsonArray.add(animalJson);
 			}
 
@@ -382,16 +383,14 @@ public class PluginData implements Listener {
 
 					// Parsear ownersUuids de JSONArray a List<UUID>
 					JSONArray ownersJsonArray = (JSONArray) animalJson.get("ownersUuids");
-					List<UUID> ownersUuids = new ArrayList<>();
+					Set<UUID> ownersUuids = new HashSet<>();
 					for (Object ownerObj : ownersJsonArray) {
 						ownersUuids.add(UUID.fromString((String) ownerObj));
 					}
 
 					// Construir el objeto FarmAnimal
 					farmAnimal = new FarmAnimal(animalUUID, name, ownersUuids);
-					//ELIMINAR
-					farmAnimal.setStableNeeded(true);
-					//farmAnimal.setStableNeeded((boolean) animalJson.get("stableNeeded"));
+					farmAnimal.setStableNeeded((boolean) animalJson.get("stableNeeded"));
 					farmAnimal.setFriendshipPoints(((Long) animalJson.get("friendshipPoints")).intValue());
 					farmAnimal.setGeneticPoints(((Long) animalJson.get("geneticPoints")).intValue());
 					farmAnimal.setState(AnimalStates.valueOf((String) animalJson.get("state")));
@@ -411,6 +410,10 @@ public class PluginData implements Listener {
 						farmAnimal.setLastRewardCollected(new Date((Long) animalJson.get("lastRewardCollected")));
 					}
 
+					if (animalJson.get("lastUpdated") != null) {
+						farmAnimal.setLastUpdated(new Date((Long) animalJson.get("lastUpdated")));
+					}
+
 					// Guardar la instancia única en el mapa temporal
 					tempAnimalMap.put(animalUUID, farmAnimal);
 				}
@@ -426,64 +429,6 @@ public class PluginData implements Listener {
 
 			// Agregar los animales cargados al mapa playerAnimals
 			playerAnimals.put(playerUUID, loadedAnimals);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-
-	public static void loadPlayerDataFix(UUID playerUUID, Map<UUID, FarmAnimal> tempAnimalMap) {
-		try {
-			File file = new File(PLAYER_DATA_DIR, playerUUID.toString() + ".json");
-			if (!file.exists()) {
-				return;
-			}
-			JSONParser parser = new JSONParser();
-			JSONObject playerJson = (JSONObject) parser.parse(new FileReader(file));
-
-			JSONArray animalsJsonArray = (JSONArray) playerJson.get("animals");
-
-			for (Object animalObj : animalsJsonArray) {
-				JSONObject animalJson = (JSONObject) animalObj;
-
-				UUID animalUUID = UUID.fromString((String) animalJson.get("uuid"));
-
-				// Verificamos si el animal ya ha sido cargado en esta sesión
-				FarmAnimal existingAnimal = tempAnimalMap.get(animalUUID);
-
-				// Construimos el nuevo animal cargado desde el archivo
-				String name = (String) animalJson.get("name");
-				JSONArray ownersJsonArray = (JSONArray) animalJson.get("ownersUuids");
-				List<UUID> ownersUuids = new ArrayList<>();
-				for (Object ownerObj : ownersJsonArray) {
-					ownersUuids.add(UUID.fromString((String) ownerObj));
-				}
-
-				FarmAnimal loadedAnimal = new FarmAnimal(animalUUID, name, ownersUuids);
-				loadedAnimal.setFriendshipPoints(((Long) animalJson.get("friendshipPoints")).intValue());
-				loadedAnimal.setGeneticPoints(((Long) animalJson.get("geneticPoints")).intValue());
-				loadedAnimal.setState(AnimalStates.valueOf((String) animalJson.get("state")));
-				loadedAnimal.setFed((boolean) animalJson.get("fed"));
-				loadedAnimal.setCared((boolean) animalJson.get("cared"));
-				loadedAnimal.setSleptInStable((boolean) animalJson.get("sleptInStable"));
-				loadedAnimal.setSpaceNeeded((boolean) animalJson.get("spaceNeeded"));
-				loadedAnimal.setWaterNeeded((boolean) animalJson.get("waterNeeded"));
-				loadedAnimal.setDaysOut(((Long) animalJson.get("daysOut")).intValue());
-				if (animalJson.get("lastRewardCollected") != null) {
-					loadedAnimal.setLastRewardCollected(new Date((Long) animalJson.get("lastRewardCollected")));
-				}
-
-				// Si el animal ya existe en el mapa temporal, comparamos la genética
-				if (existingAnimal != null) {
-					// Si la genética del animal cargado es mayor, lo reemplazamos en el mapa temporal
-					if (loadedAnimal.getGeneticPoints() > existingAnimal.getGeneticPoints()) {
-						tempAnimalMap.put(animalUUID, loadedAnimal);
-					}
-				} else {
-					// Si el animal no existe en el mapa temporal, lo agregamos directamente
-					tempAnimalMap.put(animalUUID, loadedAnimal);
-				}
-			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -516,51 +461,6 @@ public class PluginData implements Listener {
 						}
 					}
 				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public static void loadAllPlayerDataFix() {
-		Map<UUID, FarmAnimal> tempAnimalMap = new HashMap<>();
-
-		try {
-			File playerDataFolder = new File(PLAYER_DATA_DIR);
-			if (!playerDataFolder.exists() || !playerDataFolder.isDirectory()) {
-				return;
-			}
-
-			// Recorre cada carpeta (cada jugador) dentro de la carpeta PlayerData
-			for (File playerFolder : playerDataFolder.listFiles()) {
-				if (playerFolder.isFile()) {
-					String fileName = playerFolder.getName();
-
-					// Verifica y elimina la extensión .json si está presente
-					if (fileName.endsWith(".json")) {
-						String uuidString = fileName.substring(0, fileName.length() - 5);
-						try {
-							UUID playerUUID = UUID.fromString(uuidString);
-							// Llama a la función loadPlayerData con el UUID del jugador
-							loadPlayerData(playerUUID, tempAnimalMap);
-						} catch (IllegalArgumentException e) {
-							// Maneja el caso en que el nombre de archivo no sea un UUID válido
-							Bukkit.getLogger().warning("Invalid player data file: " + fileName);
-						}
-					}
-				}
-			}
-
-			// Actualizar playerAnimals con los datos cargados en tempAnimalMap
-			for (Map.Entry<UUID, FarmAnimal> entry : tempAnimalMap.entrySet()) {
-				UUID animalUUID = entry.getKey();
-				FarmAnimal animal = entry.getValue();
-
-				UUID playerUUID = animal.getOwnersUuids().get(0); // Suponiendo que el primer propietario es el dueño principal
-
-				Set<FarmAnimal> playerAnimalList = playerAnimals.getOrDefault(playerUUID, new HashSet<>());
-				playerAnimalList.add(animal);
-				playerAnimals.put(playerUUID, playerAnimalList);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

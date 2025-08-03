@@ -28,6 +28,7 @@ public class Messages {
 	public static String alreadyLinked;
     public static String neuteredHorse;
     public static String tameFirst;
+    public static String removeOwnership;
 
     public static void loadConfig(FileConfiguration config) {
         inventoryName = config.getString("messages.inventoryName");
@@ -55,6 +56,7 @@ public class Messages {
         alreadyLinked = config.getString("messages.alreadyLinked");
         neuteredHorse = config.getString("messages.neuteredHorse");
         tameFirst = config.getString("messages.tameFirst");
+        removeOwnership = config.getString("messages.removeOwnership");
 
 //        Bukkit.getLogger().info("[BreedingBuddies] Loaded message: nameFirst = " + nameFirst);
     }

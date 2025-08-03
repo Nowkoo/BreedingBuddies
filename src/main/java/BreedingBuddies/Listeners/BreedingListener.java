@@ -9,13 +9,14 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityBreedEvent;
 
 import java.util.Random;
 
 public class BreedingListener implements Listener {
-	@EventHandler
+	@EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
 	public void onEntityBreed(EntityBreedEvent event) {
 		if (event.getBreeder() instanceof Player) {
 			Player player = (Player) event.getBreeder();
@@ -28,17 +29,18 @@ public class BreedingListener implements Listener {
 
 			boolean playerIsOwner = playerOwnsParents(player, fatherEntity, motherEntity);
 
-			if (playerIsOwner) {
-				if (MountUtils.isNeutered(motherEntity) || MountUtils.isNeutered(fatherEntity)) {
-					if (mother instanceof AbstractHorse && father instanceof  AbstractHorse) {
-						player.sendMessage(Messages.neuteredHorse);
-						((AbstractHorse) father).setLoveModeTicks(0);
-						((AbstractHorse) mother).setLoveModeTicks(0);
-						event.setCancelled(true);
-						event.setExperience(0);
-						return;
-					}
+			if (MountUtils.isNeutered(motherEntity) || MountUtils.isNeutered(fatherEntity)) {
+				event.setCancelled(true);
+				if (motherEntity instanceof AbstractHorse && fatherEntity instanceof AbstractHorse) {
+					player.sendMessage(Messages.neuteredHorse);
+					((AbstractHorse) fatherEntity).setLoveModeTicks(0);
+					((AbstractHorse) motherEntity).setLoveModeTicks(0);
+					//event.setExperience(0);
+					return;
 				}
+			}
+
+			if (playerIsOwner) {
 				if (MountUtils.isFullStatMount(childEntity)) {
 					Bukkit.getScheduler().runTaskLater(BreedingBuddies.getInstance(), () -> {
 						MountUtils.applyInheritedStats(
